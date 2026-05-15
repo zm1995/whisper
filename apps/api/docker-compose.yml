@@ -1,0 +1,18 @@
+# PostgreSQL with pgvector (required by prisma/schema.prisma extensions = [vector(...)])
+# Usage: docker compose up -d
+# Then: npm run prisma:migrate (or prisma migrate deploy)
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: whisper-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: whisper-dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - whisper_pg_data:/var/lib/postgresql/data
+
+volumes:
+  whisper_pg_data:

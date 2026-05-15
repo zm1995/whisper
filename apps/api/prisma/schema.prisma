@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]  // 必须加
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // PostgreSQL 扩展名是 `vector`；列维度写在模型字段 Unsupported("vector(1536)") 里
+  extensions = [vector(schema: "public")]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student   Student?
+  teacher   Teacher?
+  submissions Submission[]
+  correctionLogs CorrectionLog[]
+}
+
+model Student {
+  userId String @id
+  grade  String // 三年级、四年级
+  level  String // A1, A2
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Teacher {
+  userId String @id
+  school String?
+  user   User   @relation(fields: [userId], references: [id])
+
+  assignments Assignment[]
+}
+
+model Assignment {
+  id        String   @id @default(cuid())
+  teacherId String
+  title     String
+  content   Json     // 题目列表 JSON
+  deadline  DateTime
+  createdAt DateTime @default(now())
+  
+  teacher    Teacher      @relation(fields: [teacherId], references: [userId])
+  submissions Submission[]
+}
+
+model Submission {
+  id           String   @id @default(cuid())
+  assignmentId String
+  studentId    String
+  content      Json     // 学生答案
+  score        Float?
+  status       SubmissionStatus @default(PENDING)
+  submittedAt  DateTime @default(now())
+  gradedAt     DateTime?
+  
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  student    User       @relation(fields: [studentId], references: [id])
+}
+
+model CorrectionLog {
+  id           String   @id @default(cuid())
+  userId       String
+  inputSentence String
+  outputJson   Json     // 完整批改结果
+  errorType    String?  // E01, E02...
+  durationMs   Int?
+  createdAt    DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+}
+
+model GrammarRule {
+  id          String   @id // E01, E02...
+  name        String
+  description String?
+  priority    Int      @default(0)
+  isActive    Boolean  @default(true)
+}
+
+model WordVector {
+  id         String   @id @default(cuid())
+  word       String   @unique
+  pos        String   // 词性
+  inflections Json     // 形态变化
+  semanticTags Json    // 语义标签
+  // pgvector：Prisma 5 用 Unsupported 映射原生列；1536 为占位维度，可按模型调整
+  embedding Unsupported("vector(1536)")?
+  createdAt  DateTime @default(now())
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum SubmissionStatus {
+  PENDING
+  GRADED
+}
